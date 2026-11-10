@@ -93,52 +93,9 @@ $('export').onclick=async()=>{
   function body(ws,start,end){for(let r=start;r<=end;r++){let row=ws.getRow(r);row.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:r%2?WHITE:PALE}};c.alignment={vertical:'middle',wrapText:true}})}}
   function pctCell(cell,v){cell.value=v==null?'Sin datos':v;if(v!=null)cell.numFmt='0.0%';cell.font={bold:true,color:{argb:v==null?GRAY:v<.8?RED:NAVY}};if(v!=null)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:v<.8?'F4CCCC':v<.9?'FFF2CC':'C6E0B4'}}}
   function addImage(ws,data,range){let id=wb.addImage({base64:data,extension:'png'});ws.addImage(id,range)}
-  
-   // No cumplimientos por servicio y ronda
-   const sortedRoundsNC=[...rs].sort((a,b)=>((a.service||'')+(a.date||'')).localeCompare((b.service||'')+(b.date||'')));
-   const roundNumberNC=new Map();
-   sortedRoundsNC.forEach((r,i)=>roundNumberNC.set(r.uid||roundFingerprint(r),i+1));
-   const wsNC=wb.addWorksheet('No cumplimientos');
-   setup(wsNC,'NO CUMPLIMIENTOS POR SERVICIO Y RONDA','Solo criterios marcados como NC.',11);
-   wsNC.columns=[{width:30},{width:10},{width:14},{width:28},{width:16},{width:24},{width:28},{width:8},{width:72},{width:48},{width:48}];
-   wsNC.addRow([]);
-   header(wsNC.addRow(['Servicio','Ronda','Fecha','Responsable','Turno','Subdivisión','Categoría','N°','No cumplimiento','Observación','Observaciones generales']));
-   const ncRowsExport=[];
-   sortedRoundsNC.forEach(r=>{
-     const rid=r.uid||roundFingerprint(r);
-     (r.answers||[]).forEach((a,i)=>{
-       if((a.result||'')!=='NC')return;
-       ncRowsExport.push({
-         service:r.service||'',
-         round:roundNumberNC.get(rid)||'',
-         date:r.date||'',
-         person:r.person||'',
-         shift:r.shift||'',
-         subdivision:subdivisions[a.area||flat[i]?.area||'']||(a.area||flat[i]?.area||''),
-         category:a.category||flat[i]?.category||'',
-         itemNo:i+1,
-         item:a.item||flat[i]?.item||'',
-         obs:a.obs||'',
-         general:r.general||''
-       })
-     })
-   });
-   ncRowsExport.sort((a,b)=>a.service.localeCompare(b.service)||String(a.date).localeCompare(String(b.date))||a.round-b.round||a.itemNo-b.itemNo);
-   ncRowsExport.forEach(x=>{
-     let r=wsNC.addRow([x.service,x.round,x.date,x.person,x.shift,x.subdivision,x.category,x.itemNo,x.item,x.obs,x.general]);
-     r.getCell(9).font={bold:true,color:{argb:RED}}
-   });
-   if(!ncRowsExport.length){
-     let r=wsNC.addRow(['Sin no cumplimientos registrados']);
-     wsNC.mergeCells(r.number,1,r.number,11);
-     r.getCell(1).alignment={horizontal:'center'};
-     r.getCell(1).font={italic:true,color:{argb:GRAY}}
-   }
-   body(wsNC,5,wsNC.rowCount);
-   wsNC.autoFilter={from:'A4',to:'K'+wsNC.rowCount};
-   wsNC.views=[{showGridLines:false,state:'frozen',ySplit:4}];
-
-// Dashboard
+  // No cumplimientos por servicio y ronda
+  const sortedRoundsNC=[...rs].sort((a,b)=>((a.service||'')+(a.date||'')).localeCompare((b.service||'')+(b.date||''))),roundNumberNC=new Map();sortedRoundsNC.forEach((r,i)=>roundNumberNC.set(r.uid||roundFingerprint(r),i+1));const wsNC=wb.addWorksheet('No cumplimientos');setup(wsNC,'NO CUMPLIMIENTOS POR SERVICIO Y RONDA','Solo criterios marcados como NC.',11);wsNC.columns=[{width:30},{width:10},{width:14},{width:28},{width:16},{width:24},{width:28},{width:8},{width:72},{width:48},{width:48}];wsNC.addRow([]);header(wsNC.addRow(['Servicio','Ronda','Fecha','Responsable','Turno','Subdivisión','Categoría','N°','No cumplimiento','Observación','Observaciones generales']));const ncRowsExport=[];sortedRoundsNC.forEach(r=>{const rid=r.uid||roundFingerprint(r);(r.answers||[]).forEach((a,i)=>{if((a.result||'')!=='NC')return;ncRowsExport.push({service:r.service||'',round:roundNumberNC.get(rid)||'',date:r.date||'',person:r.person||'',shift:r.shift||'',subdivision:subdivisions[a.area||flat[i]?.area||'']||(a.area||flat[i]?.area||''),category:a.category||flat[i]?.category||'',itemNo:i+1,item:a.item||flat[i]?.item||'',obs:a.obs||'',general:r.general||''})})});ncRowsExport.sort((a,b)=>a.service.localeCompare(b.service)||String(a.date).localeCompare(String(b.date))||a.round-b.round||a.itemNo-b.itemNo);ncRowsExport.forEach(x=>{let r=wsNC.addRow([x.service,x.round,x.date,x.person,x.shift,x.subdivision,x.category,x.itemNo,x.item,x.obs,x.general]);r.getCell(9).font={bold:true,color:{argb:RED}}});if(!ncRowsExport.length){let r=wsNC.addRow(['Sin no cumplimientos registrados']);wsNC.mergeCells(r.number,1,r.number,11);r.getCell(1).alignment={horizontal:'center'};r.getCell(1).font={italic:true,color:{argb:GRAY}}}body(wsNC,5,wsNC.rowCount);wsNC.autoFilter={from:'A4',to:'K'+wsNC.rowCount};wsNC.views=[{showGridLines:false,state:'frozen',ySplit:4}];
+  // Dashboard
   let ws=wb.addWorksheet('Dashboard');setup(ws,'DASHBOARD - RONDAS DE GESTIÓN AMBIENTAL','Clínica La Esperanza',12);ws.columns=[{width:24},{width:14},{width:24},{width:14},{width:24},{width:16},{width:3},{width:18},{width:18},{width:18},{width:18},{width:18}];ws.addRow([]);ws.addRow(['INDICADORES PRINCIPALES']);ws.mergeCells('A4:L4');let sr=ws.getRow(4);header(sr);let kpis=[['Rondas realizadas',rs.length],['Criterios registrados',valid.length],['Cumple (C)',totals.C],['No cumple (NC)',totals.NC],['No observado (NO)',totals.NO],['No aplica (NA)',totals.NA],['Cumplimiento general',generalPct==null?'Sin datos':generalPct]];kpis.forEach((k,i)=>{let row=5+Math.floor(i/3)*2,col=1+(i%3)*4;ws.getCell(row,col).value=k[0];ws.getCell(row,col).font={bold:true,color:{argb:NAVY}};ws.getCell(row,col).fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}};ws.getCell(row+1,col).value=k[1];ws.getCell(row+1,col).font={bold:true,size:16,color:{argb:i===6?GREEN:NAVY}};if(i===6&&generalPct!=null)ws.getCell(row+1,col).numFmt='0.0%'});
   let institutionalMonths=byMonth.map(x=>String(x.month||'').slice(0,7));let instChart=makeChart('line',institutionalMonths,[{name:'Institucional',color:BLUE,values:byMonth.map(x=>x.pct)}],'Evolución mensual institucional',{bottom:92});addImage(ws,instChart,{tl:{col:0,row:11},ext:{width:700,height:330}});let svcChart=makeChart('column',services,[{name:'Cumplimiento',color:GREEN,values:services.map(s=>byService.find(x=>x.service===s)?.pct??null)}],'Cumplimiento consolidado por servicio');addImage(ws,svcChart,{tl:{col:7,row:11},ext:{width:680,height:330}});ws.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0};
   // Resumen
@@ -147,58 +104,10 @@ $('export').onclick=async()=>{
   ws=wb.addWorksheet('Cumplimiento por día');setup(ws,'CUMPLIMIENTO POR DÍA Y SERVICIO','Consolidado ponderado con totales de C y NC.',8);ws.columns=[{width:14},{width:32},{width:9},{width:9},{width:9},{width:9},{width:18},{width:18}];ws.addRow([]);header(ws.addRow(['Fecha','Servicio','C','NC','NO','NA','Evaluados C+NC','% Cumplimiento']));byDay.forEach(x=>{let r=ws.addRow([x.date,x.service,x.C,x.NC,x.NO,x.NA,x.valid,x.pct]);pctCell(r.getCell(8),x.pct)});body(ws,5,ws.rowCount);ws.autoFilter={from:'A4',to:'H'+ws.rowCount};
   // Mensual por servicio
   ws=wb.addWorksheet('Mensual por servicio');setup(ws,'CUMPLIMIENTO TOTAL MENSUAL POR SERVICIO','No se crean registros para meses sin evaluaciones.',9);ws.columns=[{width:14},{width:32},{width:10},{width:9},{width:9},{width:9},{width:9},{width:18},{width:18}];ws.addRow([]);header(ws.addRow(['Mes','Servicio','Rondas','C','NC','NO','NA','Evaluados C+NC','% Cumplimiento']));byMonthService.forEach(x=>{let r=ws.addRow([x.month,x.service,x.rounds,x.C,x.NC,x.NO,x.NA,x.valid,x.pct]);pctCell(r.getCell(9),x.pct)});body(ws,5,ws.rowCount);ws.autoFilter={from:'A4',to:'I'+ws.rowCount};let monthlySeries=services.map((s,i)=>({name:s,color:serviceColors[i],values:monthLabels.map(m=>byMonthService.find(x=>x.month===m&&x.service===s)?.pct??null)}));let monthlyChart=makeChart('column',monthLabels,monthlySeries,'Cumplimiento mensual por servicio',{width:1050,height:500,bottom:92});addImage(ws,monthlyChart,{tl:{col:10,row:3},ext:{width:880,height:410}});
-   // Por ítem mensual
-   ws=wb.addWorksheet('Por ítem mensual');
-   setup(ws,'CUMPLIMIENTO MENSUAL POR ÍTEM Y SERVICIO','Cada fila corresponde a un ítem dentro de un mes. Sin C o NC se presenta como Sin datos.',12);
-   ws.columns=[{width:14},{width:25},{width:26},{width:7},{width:72},...services.map(()=>({width:22})),{width:18}];
-   ws.addRow([]);
-   header(ws.addRow(['Mes','Categoría','Subcategoría','N°','Ítem evaluado',...services,'% Global']));
-   const monthsItems=[...new Set(valid.map(x=>x.month))].filter(Boolean).sort();
-   monthsItems.forEach(m=>{
-     flat.forEach((f,i)=>{
-       const vals=services.map(s=>{
-         let rows=valid.filter(x=>x.month===m&&x.itemNo===i+1&&x.service===s);
-         let C=0,NC=0;
-         rows.forEach(x=>{if(x.result==='C')C++;if(x.result==='NC')NC++});
-         return pctValue(C,NC)
-       });
-       let allRows=valid.filter(x=>x.month===m&&x.itemNo===i+1),C=0,NC=0;
-       allRows.forEach(x=>{if(x.result==='C')C++;if(x.result==='NC')NC++});
-       let r=ws.addRow([m,f.area,f.category,i+1,f.item,...vals,pctValue(C,NC)]);
-       for(let c=6;c<=12;c++)pctCell(r.getCell(c),r.getCell(c).value)
-     })
-   });
-   body(ws,5,ws.rowCount);
-   ws.autoFilter={from:'A4',to:'L'+ws.rowCount};
-   ws.views=[{showGridLines:false,state:'frozen',xSplit:5,ySplit:4}];
-   // mensual subdivisión
-   ws=wb.addWorksheet('Mensual subdivisión');
-   setup(ws,'EVOLUCIÓN MENSUAL POR SUBDIVISIÓN','Consolidado por mes, servicio y subdivisión.',9);
-   ws.columns=[{width:14},{width:34},{width:26},{width:9},{width:9},{width:9},{width:9},{width:18},{width:18}];
-   ws.addRow([]);
-   header(ws.addRow(['Mes','Servicio','Subdivisión','C','NC','NO','NA','Evaluados C+NC','% Cumplimiento']));
-   byMonthSubdivision.forEach(x=>{
-     let r=ws.addRow([x.month,x.service,x.subdivision,x.C,x.NC,x.NO,x.NA,x.valid,x.pct]);
-     pctCell(r.getCell(9),x.pct)
-   });
-   body(ws,5,ws.rowCount);
-   ws.autoFilter={from:'A4',to:'I'+ws.rowCount};
-
-   const subMonthLabels=[...new Set(byMonthSubdivision.map(x=>x.month))].filter(Boolean).sort();
-   const subNames=['GENERAL','PERSONAL ASISTENCIAL','SERVICIOS GENERALES'];
-   const subSeriesMonthly=subNames.map((sub,i)=>({
-     name:sub,
-     color:[BLUE2,GREEN,'ED7D31'][i],
-     values:subMonthLabels.map(m=>{
-       let rows=byMonthSubdivision.filter(x=>x.month===m&&x.subdivision===sub);
-       let C=rows.reduce((n,x)=>n+x.C,0),NC=rows.reduce((n,x)=>n+x.NC,0);
-       return pctValue(C,NC)
-     })
-   }));
-   if(subMonthLabels.length){
-     let img=makeChart('column',subMonthLabels,subSeriesMonthly,'Cumplimiento mensual por subdivisión',{width:1050,height:500,bottom:92});
-     addImage(ws,img,{tl:{col:10,row:3},ext:{width:880,height:410}})
-   }body(sh,5,sh.rowCount);sh.autoFilter={from:'A4',to:'H'+sh.rowCount};[data.slice(0,23),data.slice(23)].forEach((part,ix)=>{let img=makeChart('barh',part.map(x=>x.item),[{name:'Cumplimiento',color:GREEN,values:part.map(x=>x.pct)}],`${sv} - Ítems ${ix?24:1} a ${ix?46:23}`,{width:1050,height:600,left:400,bottom:42});addImage(sh,img,{tl:{col:9,row:ix?38:3},ext:{width:900,height:500}})})});
+  // Por ítem mensual
+  ws=wb.addWorksheet('Por ítem mensual');setup(ws,'CUMPLIMIENTO MENSUAL POR ÍTEM Y SERVICIO','Cada fila corresponde a un ítem dentro de un mes. Sin C o NC se presenta como Sin datos.',12);ws.columns=[{width:14},{width:25},{width:26},{width:7},{width:72},...services.map(()=>({width:22})),{width:18}];ws.addRow([]);header(ws.addRow(['Mes','Categoría','Subcategoría','N°','Ítem evaluado',...services,'% Global']));const monthsItems=[...new Set(valid.map(x=>x.month))].filter(Boolean).sort();monthsItems.forEach(m=>{flat.forEach((f,i)=>{const vals=services.map(s=>{let rows=valid.filter(x=>x.month===m&&x.itemNo===i+1&&x.service===s),C=0,NC=0;rows.forEach(x=>{if(x.result==='C')C++;if(x.result==='NC')NC++});return pctValue(C,NC)});let allRows=valid.filter(x=>x.month===m&&x.itemNo===i+1),C=0,NC=0;allRows.forEach(x=>{if(x.result==='C')C++;if(x.result==='NC')NC++});let r=ws.addRow([m,f.area,f.category,i+1,f.item,...vals,pctValue(C,NC)]);for(let c=6;c<=12;c++)pctCell(r.getCell(c),r.getCell(c).value)})});body(ws,5,ws.rowCount);ws.autoFilter={from:'A4',to:'L'+ws.rowCount};ws.views=[{showGridLines:false,state:'frozen',xSplit:5,ySplit:4}];
+  // mensual subdivisión
+  ws=wb.addWorksheet('Mensual subdivisión');setup(ws,'EVOLUCIÓN MENSUAL POR SUBDIVISIÓN','Consolidado por mes, servicio y subdivisión.',9);ws.columns=[{width:14},{width:34},{width:26},{width:9},{width:9},{width:9},{width:9},{width:18},{width:18}];ws.addRow([]);header(ws.addRow(['Mes','Servicio','Subdivisión','C','NC','NO','NA','Evaluados C+NC','% Cumplimiento']));byMonthSubdivision.forEach(x=>{let r=ws.addRow([x.month,x.service,x.subdivision,x.C,x.NC,x.NO,x.NA,x.valid,x.pct]);pctCell(r.getCell(9),x.pct)});body(ws,5,ws.rowCount);ws.autoFilter={from:'A4',to:'I'+ws.rowCount};const subMonthLabels=[...new Set(byMonthSubdivision.map(x=>x.month))].filter(Boolean).sort(),subNames=['GENERAL','PERSONAL ASISTENCIAL','SERVICIOS GENERALES'],subSeriesMonthly=subNames.map((sub,i)=>({name:sub,color:[BLUE2,GREEN,'ED7D31'][i],values:subMonthLabels.map(m=>{let rows=byMonthSubdivision.filter(x=>x.month===m&&x.subdivision===sub),C=rows.reduce((n,x)=>n+x.C,0),NC=rows.reduce((n,x)=>n+x.NC,0);return pctValue(C,NC)})}));if(subMonthLabels.length){let img=makeChart('column',subMonthLabels,subSeriesMonthly,'Cumplimiento mensual por subdivisión',{width:1050,height:500,bottom:92});addImage(ws,img,{tl:{col:10,row:3},ext:{width:880,height:410}})}
   wb.worksheets.forEach(sh=>{sh.pageSetup=Object.assign({orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0},sh.pageSetup||{})});
   let buffer=await wb.xlsx.writeBuffer(),blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`Informe_Profesional_Rondas_Gestion_Ambiental_${new Date().toISOString().slice(0,10)}.xlsx`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast('Informe Excel profesional generado con datos centralizados y gráficas visibles.')
  }catch(e){console.error(e);showWarning('No se pudo generar el Excel: '+e.message,true);toast('Error al generar Excel: '+e.message)}finally{button.disabled=false;button.textContent=oldText}
