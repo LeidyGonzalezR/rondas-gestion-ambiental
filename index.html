@@ -87,90 +87,30 @@ $('export').onclick=async()=>{
    else if(type==='barh'){let n=labels.length,rowH=H/Math.max(n,1);labels.forEach((lab,i)=>{let v=series[0].values[i],y=T+i*rowH+rowH*.18;c.fillStyle='#536B79';c.font='11px Segoe UI';c.textAlign='right';c.fillText((i+1)+'. '+(lab.length>54?lab.slice(0,52)+'…':lab),L-8,y+rowH*.35);if(v!=null){c.fillStyle=v<.8?'#'+RED:'#'+GREEN;c.fillRect(L,y,W*v,rowH*.55);c.fillStyle=v<.8?'#'+RED:'#17365D';c.textAlign='left';c.fillText((v*100).toFixed(1)+'%',Math.min(L+W*v+6,L+W-42),y+rowH*.38)}else{c.fillStyle='#'+GRAY;c.textAlign='left';c.fillText('Sin datos',L+6,y+rowH*.38)}})}
    else{let groups=labels.length,sc=series.length,gap=W/Math.max(groups,1),barW=Math.min(34,gap*.72/Math.max(sc,1));labels.forEach((lab,i)=>{c.fillStyle='#536B79';c.font='11px Segoe UI';c.textAlign='center';let text=String(lab),words=text.split(' '),lines=[''];words.forEach(w=>{let k=lines.length-1,test=(lines[k]+' '+w).trim();if(c.measureText(test).width>Math.max(70,gap-8)&&lines[k])lines.push(w);else lines[k]=test});lines.slice(0,3).forEach((line,j)=>c.fillText(line,L+gap*(i+.5),T+H+18+j*13))});series.forEach((se,si)=>labels.forEach((lab,i)=>{let v=se.values[i];if(v==null)return;let x=L+gap*i+gap/2-(sc*barW)/2+si*barW,y=T+H-v*H;c.fillStyle='#'+se.color;c.fillRect(x,y,barW-2,v*H)}))}
    let lx=L,ly=height-20;series.forEach(se=>{c.fillStyle='#'+se.color;c.fillRect(lx,ly-10,13,10);c.fillStyle='#334E60';c.font='11px Segoe UI';c.textAlign='left';c.fillText(se.name,lx+18,ly);lx+=Math.min(190,30+c.measureText(se.name).width)});return canvas.toDataURL('image/png')}
-  const wb=new ExcelJS.Workbook();wb.creator='Clínica La Esperanza';wb.title='Informe de Rondas de Gestión Ambiental';wb.subject='Gestión Ambiental';wb.created=new Date();let ws;
+  const wb=new ExcelJS.Workbook();wb.creator='Clínica La Esperanza';wb.title='Informe de Rondas de Gestión Ambiental';wb.subject='Gestión Ambiental';wb.created=new Date();
   function setup(ws,title,subtitle='',cols=8){ws.views=[{showGridLines:false,state:'frozen',ySplit:subtitle?4:3}];ws.mergeCells(1,1,1,cols);let t=ws.getCell(1,1);t.value=title;t.font={bold:true,color:{argb:WHITE},size:18};t.fill={type:'pattern',pattern:'solid',fgColor:{argb:NAVY}};t.alignment={horizontal:'center',vertical:'middle'};ws.getRow(1).height=29;if(subtitle){ws.mergeCells(2,1,2,cols);let s=ws.getCell(2,1);s.value=subtitle;s.font={italic:true,color:{argb:NAVY}};s.fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}};s.alignment={horizontal:'center',wrapText:true};ws.getRow(2).height=28}}
   function header(row){row.eachCell(c=>{c.font={bold:true,color:{argb:WHITE}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:BLUE}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true};c.border={bottom:{style:'thin',color:{argb:'B4C6E7'}}}});row.height=28}
   function body(ws,start,end){for(let r=start;r<=end;r++){let row=ws.getRow(r);row.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:r%2?WHITE:PALE}};c.alignment={vertical:'middle',wrapText:true}})}}
   function pctCell(cell,v){cell.value=v==null?'Sin datos':v;if(v!=null)cell.numFmt='0.0%';cell.font={bold:true,color:{argb:v==null?GRAY:v<.8?RED:NAVY}};if(v!=null)cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:v<.8?'F4CCCC':v<.9?'FFF2CC':'C6E0B4'}}}
   function addImage(ws,data,range){let id=wb.addImage({base64:data,extension:'png'});ws.addImage(id,range)}
-  // Detalle de rondas diligenciadas
-   const sortedRounds=[...rs].sort((a,b)=>{
-     let ad=(a.date||'')+'|'+(a.savedAt||'')+'|'+(a.service||'');
-     let bd=(b.date||'')+'|'+(b.savedAt||'')+'|'+(b.service||'');
-     return ad.localeCompare(bd)
-   });
-   const roundNumber=new Map();
-   sortedRounds.forEach((r,i)=>roundNumber.set(r.uid||roundFingerprint(r),i+1));
-
-   ws=wb.addWorksheet('Rondas diligenciadas');
-   setup(ws,'LISTADO DILIGENCIADO DE RONDAS','Una fila por criterio evaluado. Incluye respuesta y observación registrada en cada ronda.',13);
-   ws.columns=[
-     {width:10},{width:14},{width:30},{width:28},{width:16},{width:24},
-     {width:28},{width:8},{width:72},{width:14},{width:44},{width:48},{width:24}
-   ];
-   ws.addRow([]);
-   header(ws.addRow([
-     'Ronda','Fecha','Servicio','Responsable','Turno','Subdivisión',
-     'Categoría','N°','Criterio evaluado','Respuesta','Observación del criterio',
-     'Observaciones generales','ID ronda'
-   ]));
-   sortedRounds.forEach(r=>{
-     const rid=r.uid||roundFingerprint(r);
-     (r.answers||[]).forEach((a,i)=>{
-       const ans=a.result||'';
-       const rr=ws.addRow([
-         roundNumber.get(rid)||'',
-         r.date||'',
-         r.service||'',
-         r.person||'',
-         r.shift||'',
-         subdivisions[a.area||flat[i]?.area||'']||(a.area||flat[i]?.area||''),
-         a.category||flat[i]?.category||'',
-         i+1,
-         a.item||flat[i]?.item||'',
-         ans,
-         a.obs||'',
-         r.general||'',
-         rid
-       ]);
-       let resp=rr.getCell(10);
-       if(ans==='NC'){
-         resp.font={bold:true,color:{argb:WHITE}};
-         resp.fill={type:'pattern',pattern:'solid',fgColor:{argb:RED}};
-       }else if(ans==='C'){
-         resp.font={bold:true,color:{argb:'1F4E2C'}};
-         resp.fill={type:'pattern',pattern:'solid',fgColor:{argb:'E2F0D9'}};
-       }else if(ans==='NA'){
-         resp.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF2CC'}};
-       }else if(ans==='NO'){
-         resp.fill={type:'pattern',pattern:'solid',fgColor:{argb:'E7E6E6'}};
-       }
-     })
-   });
-   body(ws,5,ws.rowCount);
-   ws.autoFilter={from:'A4',to:'M'+ws.rowCount};
-   ws.views=[{showGridLines:false,state:'frozen',ySplit:4}];
-
+  
    // No cumplimientos por servicio y ronda
-   ws=wb.addWorksheet('No cumplimientos');
-   setup(ws,'NO CUMPLIMIENTOS POR SERVICIO Y RONDA','Solo se incluyen criterios marcados como NC, ordenados por servicio y ronda.',11);
-   ws.columns=[
-     {width:30},{width:10},{width:14},{width:28},{width:16},
-     {width:24},{width:28},{width:8},{width:72},{width:48},{width:48}
-   ];
-   ws.addRow([]);
-   header(ws.addRow([
-     'Servicio','Ronda','Fecha','Responsable','Turno','Subdivisión',
-     'Categoría','N°','No cumplimiento','Observación','Observaciones generales'
-   ]));
-   const ncRows=[];
-   sortedRounds.forEach(r=>{
+   const sortedRoundsNC=[...rs].sort((a,b)=>((a.service||'')+(a.date||'')).localeCompare((b.service||'')+(b.date||'')));
+   const roundNumberNC=new Map();
+   sortedRoundsNC.forEach((r,i)=>roundNumberNC.set(r.uid||roundFingerprint(r),i+1));
+   const wsNC=wb.addWorksheet('No cumplimientos');
+   setup(wsNC,'NO CUMPLIMIENTOS POR SERVICIO Y RONDA','Solo criterios marcados como NC.',11);
+   wsNC.columns=[{width:30},{width:10},{width:14},{width:28},{width:16},{width:24},{width:28},{width:8},{width:72},{width:48},{width:48}];
+   wsNC.addRow([]);
+   header(wsNC.addRow(['Servicio','Ronda','Fecha','Responsable','Turno','Subdivisión','Categoría','N°','No cumplimiento','Observación','Observaciones generales']));
+   const ncRowsExport=[];
+   sortedRoundsNC.forEach(r=>{
      const rid=r.uid||roundFingerprint(r);
      (r.answers||[]).forEach((a,i)=>{
        if((a.result||'')!=='NC')return;
-       ncRows.push({
+       ncRowsExport.push({
          service:r.service||'',
-         round:roundNumber.get(rid)||'',
+         round:roundNumberNC.get(rid)||'',
          date:r.date||'',
          person:r.person||'',
          shift:r.shift||'',
@@ -183,43 +123,82 @@ $('export').onclick=async()=>{
        })
      })
    });
-   ncRows.sort((a,b)=>a.service.localeCompare(b.service)||String(a.date).localeCompare(String(b.date))||a.round-b.round||a.itemNo-b.itemNo);
-   ncRows.forEach(x=>{
-     let r=ws.addRow([
-       x.service,x.round,x.date,x.person,x.shift,x.subdivision,
-       x.category,x.itemNo,x.item,x.obs,x.general
-     ]);
-     r.getCell(9).font={bold:true,color:{argb:RED}};
+   ncRowsExport.sort((a,b)=>a.service.localeCompare(b.service)||String(a.date).localeCompare(String(b.date))||a.round-b.round||a.itemNo-b.itemNo);
+   ncRowsExport.forEach(x=>{
+     let r=wsNC.addRow([x.service,x.round,x.date,x.person,x.shift,x.subdivision,x.category,x.itemNo,x.item,x.obs,x.general]);
+     r.getCell(9).font={bold:true,color:{argb:RED}}
    });
-   if(!ncRows.length){
-     let r=ws.addRow(['Sin no cumplimientos registrados']);
-     ws.mergeCells(r.number,1,r.number,11);
+   if(!ncRowsExport.length){
+     let r=wsNC.addRow(['Sin no cumplimientos registrados']);
+     wsNC.mergeCells(r.number,1,r.number,11);
      r.getCell(1).alignment={horizontal:'center'};
-     r.getCell(1).font={italic:true,color:{argb:GRAY}};
+     r.getCell(1).font={italic:true,color:{argb:GRAY}}
    }
-   body(ws,5,ws.rowCount);
-   ws.autoFilter={from:'A4',to:'K'+ws.rowCount};
-   ws.views=[{showGridLines:false,state:'frozen',ySplit:4}];
+   body(wsNC,5,wsNC.rowCount);
+   wsNC.autoFilter={from:'A4',to:'K'+wsNC.rowCount};
+   wsNC.views=[{showGridLines:false,state:'frozen',ySplit:4}];
 
-   // Dashboard
-  ws=wb.addWorksheet('Dashboard');setup(ws,'DASHBOARD - RONDAS DE GESTIÓN AMBIENTAL','Clínica La Esperanza',12);ws.columns=[{width:24},{width:14},{width:24},{width:14},{width:24},{width:16},{width:3},{width:18},{width:18},{width:18},{width:18},{width:18}];ws.addRow([]);ws.addRow(['INDICADORES PRINCIPALES']);ws.mergeCells('A4:L4');let sr=ws.getRow(4);header(sr);let kpis=[['Rondas realizadas',rs.length],['Criterios registrados',valid.length],['Cumple (C)',totals.C],['No cumple (NC)',totals.NC],['No observado (NO)',totals.NO],['No aplica (NA)',totals.NA],['Cumplimiento general',generalPct==null?'Sin datos':generalPct]];kpis.forEach((k,i)=>{let row=5+Math.floor(i/3)*2,col=1+(i%3)*4;ws.getCell(row,col).value=k[0];ws.getCell(row,col).font={bold:true,color:{argb:NAVY}};ws.getCell(row,col).fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}};ws.getCell(row+1,col).value=k[1];ws.getCell(row+1,col).font={bold:true,size:16,color:{argb:i===6?GREEN:NAVY}};if(i===6&&generalPct!=null)ws.getCell(row+1,col).numFmt='0.0%'});
+// Dashboard
+  let ws=wb.addWorksheet('Dashboard');setup(ws,'DASHBOARD - RONDAS DE GESTIÓN AMBIENTAL','Clínica La Esperanza',12);ws.columns=[{width:24},{width:14},{width:24},{width:14},{width:24},{width:16},{width:3},{width:18},{width:18},{width:18},{width:18},{width:18}];ws.addRow([]);ws.addRow(['INDICADORES PRINCIPALES']);ws.mergeCells('A4:L4');let sr=ws.getRow(4);header(sr);let kpis=[['Rondas realizadas',rs.length],['Criterios registrados',valid.length],['Cumple (C)',totals.C],['No cumple (NC)',totals.NC],['No observado (NO)',totals.NO],['No aplica (NA)',totals.NA],['Cumplimiento general',generalPct==null?'Sin datos':generalPct]];kpis.forEach((k,i)=>{let row=5+Math.floor(i/3)*2,col=1+(i%3)*4;ws.getCell(row,col).value=k[0];ws.getCell(row,col).font={bold:true,color:{argb:NAVY}};ws.getCell(row,col).fill={type:'pattern',pattern:'solid',fgColor:{argb:LIGHT}};ws.getCell(row+1,col).value=k[1];ws.getCell(row+1,col).font={bold:true,size:16,color:{argb:i===6?GREEN:NAVY}};if(i===6&&generalPct!=null)ws.getCell(row+1,col).numFmt='0.0%'});
   let institutionalMonths=byMonth.map(x=>String(x.month||'').slice(0,7));let instChart=makeChart('line',institutionalMonths,[{name:'Institucional',color:BLUE,values:byMonth.map(x=>x.pct)}],'Evolución mensual institucional',{bottom:92});addImage(ws,instChart,{tl:{col:0,row:11},ext:{width:700,height:330}});let svcChart=makeChart('column',services,[{name:'Cumplimiento',color:GREEN,values:services.map(s=>byService.find(x=>x.service===s)?.pct??null)}],'Cumplimiento consolidado por servicio');addImage(ws,svcChart,{tl:{col:7,row:11},ext:{width:680,height:330}});ws.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0};
   // Resumen
   ws=wb.addWorksheet('Resumen');setup(ws,'RESUMEN EJECUTIVO','Fórmula: C / (C + NC). NO y NA se contabilizan, pero no afectan el porcentaje.',4);ws.columns=[{width:36},{width:24},{width:24},{width:24}];ws.addRow([]);let rh=ws.addRow(['Indicador','Resultado']);header(rh);[['Rondas realizadas',rs.length],['Criterios registrados',valid.length],['Cumple (C)',totals.C],['No cumple (NC)',totals.NC],['No observado (NO)',totals.NO],['No aplica (NA)',totals.NA],['Porcentaje general',generalPct]].forEach(x=>{let r=ws.addRow(x);if(x[0]==='Porcentaje general')pctCell(r.getCell(2),x[1])});body(ws,5,ws.rowCount);
   // Cumplimiento por día
   ws=wb.addWorksheet('Cumplimiento por día');setup(ws,'CUMPLIMIENTO POR DÍA Y SERVICIO','Consolidado ponderado con totales de C y NC.',8);ws.columns=[{width:14},{width:32},{width:9},{width:9},{width:9},{width:9},{width:18},{width:18}];ws.addRow([]);header(ws.addRow(['Fecha','Servicio','C','NC','NO','NA','Evaluados C+NC','% Cumplimiento']));byDay.forEach(x=>{let r=ws.addRow([x.date,x.service,x.C,x.NC,x.NO,x.NA,x.valid,x.pct]);pctCell(r.getCell(8),x.pct)});body(ws,5,ws.rowCount);ws.autoFilter={from:'A4',to:'H'+ws.rowCount};
-  // Por servicio
-  ws=wb.addWorksheet('Por servicio');setup(ws,'CUMPLIMIENTO CONSOLIDADO POR SERVICIO','Los servicios sin C o NC se muestran como Sin datos.',7);ws.columns=[{width:34},{width:9},{width:9},{width:9},{width:9},{width:18},{width:18}];ws.addRow([]);header(ws.addRow(['Servicio','C','NC','NO','NA','Evaluados C+NC','% Cumplimiento']));services.forEach(s=>{let x=byService.find(y=>y.service===s)||{C:0,NC:0,NO:0,NA:0,valid:0,pct:null};let r=ws.addRow([s,x.C,x.NC,x.NO,x.NA,x.valid,x.pct]);pctCell(r.getCell(7),x.pct)});body(ws,5,ws.rowCount);ws.autoFilter={from:'A4',to:'G'+ws.rowCount};
   // Mensual por servicio
   ws=wb.addWorksheet('Mensual por servicio');setup(ws,'CUMPLIMIENTO TOTAL MENSUAL POR SERVICIO','No se crean registros para meses sin evaluaciones.',9);ws.columns=[{width:14},{width:32},{width:10},{width:9},{width:9},{width:9},{width:9},{width:18},{width:18}];ws.addRow([]);header(ws.addRow(['Mes','Servicio','Rondas','C','NC','NO','NA','Evaluados C+NC','% Cumplimiento']));byMonthService.forEach(x=>{let r=ws.addRow([x.month,x.service,x.rounds,x.C,x.NC,x.NO,x.NA,x.valid,x.pct]);pctCell(r.getCell(9),x.pct)});body(ws,5,ws.rowCount);ws.autoFilter={from:'A4',to:'I'+ws.rowCount};let monthlySeries=services.map((s,i)=>({name:s,color:serviceColors[i],values:monthLabels.map(m=>byMonthService.find(x=>x.month===m&&x.service===s)?.pct??null)}));let monthlyChart=makeChart('column',monthLabels,monthlySeries,'Cumplimiento mensual por servicio',{width:1050,height:500,bottom:92});addImage(ws,monthlyChart,{tl:{col:10,row:3},ext:{width:880,height:410}});
-  // Por ítem
-  ws=wb.addWorksheet('Por ítem');setup(ws,'CUMPLIMIENTO POR ÍTEM Y SERVICIO','Cada fila conserva el texto exacto del ítem. Sin C o NC se presenta como Sin datos.',11);ws.columns=[{width:25},{width:26},{width:7},{width:72},...services.map(()=>({width:22})),{width:18}];ws.addRow([]);header(ws.addRow(['Categoría','Subcategoría','N°','Ítem evaluado',...services,'% Global']));flat.forEach((f,i)=>{let vals=services.map(s=>itemRows.find(x=>x.itemNo===i+1&&x.service===s)?.pct??null),all=itemRows.filter(x=>x.itemNo===i+1),C=all.reduce((n,x)=>n+x.C,0),NC=all.reduce((n,x)=>n+x.NC,0),r=ws.addRow([f.area,f.category,i+1,f.item,...vals,pctValue(C,NC)]);for(let c=5;c<=11;c++)pctCell(r.getCell(c),r.getCell(c).value)});body(ws,5,ws.rowCount);ws.autoFilter={from:'A4',to:'K'+ws.rowCount};ws.views=[{showGridLines:false,state:'frozen',xSplit:4,ySplit:4}];
-  // Subdivisiones
-  ws=wb.addWorksheet('Por subdivisión');setup(ws,'CUMPLIMIENTO POR SERVICIO Y SUBDIVISIÓN','GENERAL corresponde a la sección DEL SERVICIO.',8);ws.columns=[{width:34},{width:26},{width:9},{width:9},{width:9},{width:9},{width:18},{width:18}];ws.addRow([]);header(ws.addRow(['Servicio','Subdivisión','C','NC','NO','NA','Evaluados C+NC','% Cumplimiento']));services.forEach(s=>['GENERAL','PERSONAL ASISTENCIAL','SERVICIOS GENERALES'].forEach(sub=>{let x=bySubdivision.find(y=>y.service===s&&y.subdivision===sub)||{C:0,NC:0,NO:0,NA:0,valid:0,pct:null};let r=ws.addRow([s,sub,x.C,x.NC,x.NO,x.NA,x.valid,x.pct]);pctCell(r.getCell(8),x.pct)}));body(ws,5,ws.rowCount);ws.autoFilter={from:'A4',to:'H'+ws.rowCount};let subSeries=['GENERAL','PERSONAL ASISTENCIAL','SERVICIOS GENERALES'].map((sub,i)=>({name:sub,color:[BLUE2,GREEN,'ED7D31'][i],values:services.map(s=>bySubdivision.find(x=>x.service===s&&x.subdivision===sub)?.pct??null)}));addImage(ws,makeChart('column',services,subSeries,'Cumplimiento por servicio y subdivisión',{width:1050,height:500,bottom:92}),{tl:{col:9,row:3},ext:{width:880,height:410}});
-  // mensual subdivisión
-  ws=wb.addWorksheet('Mensual subdivisión');setup(ws,'EVOLUCIÓN MENSUAL POR SUBDIVISIÓN','Consolidado por mes, servicio y subdivisión.',9);ws.columns=[{width:14},{width:34},{width:26},{width:9},{width:9},{width:9},{width:9},{width:18},{width:18}];ws.addRow([]);header(ws.addRow(['Mes','Servicio','Subdivisión','C','NC','NO','NA','Evaluados C+NC','% Cumplimiento']));byMonthSubdivision.forEach(x=>{let r=ws.addRow([x.month,x.service,x.subdivision,x.C,x.NC,x.NO,x.NA,x.valid,x.pct]);pctCell(r.getCell(9),x.pct)});body(ws,5,ws.rowCount);ws.autoFilter={from:'A4',to:'I'+ws.rowCount};
-  // gráficas por ítem, una hoja por servicio, dos bloques para legibilidad
-  services.forEach((sv,si)=>{let name=('Ítems '+sv).slice(0,31),sh=wb.addWorksheet(name);setup(sh,'CUMPLIMIENTO POR ÍTEM - '+sv,'Rojo: inferior al 80 %. Gris: Sin datos.',8);sh.columns=[{width:8},{width:75},{width:18},{width:9},{width:9},{width:9},{width:9},{width:18}];sh.addRow([]);header(sh.addRow(['N°','Ítem evaluado','Subdivisión','C','NC','NO','NA','% Cumplimiento']));let data=itemRows.filter(x=>x.service===sv);data.forEach(x=>{let r=sh.addRow([x.itemNo,x.item,subdivisions[x.area]||x.area,x.C,x.NC,x.NO,x.NA,x.pct]);pctCell(r.getCell(8),x.pct)});body(sh,5,sh.rowCount);sh.autoFilter={from:'A4',to:'H'+sh.rowCount};[data.slice(0,23),data.slice(23)].forEach((part,ix)=>{let img=makeChart('barh',part.map(x=>x.item),[{name:'Cumplimiento',color:GREEN,values:part.map(x=>x.pct)}],`${sv} - Ítems ${ix?24:1} a ${ix?46:23}`,{width:1050,height:600,left:400,bottom:42});addImage(sh,img,{tl:{col:9,row:ix?38:3},ext:{width:900,height:500}})})});
+   // Por ítem mensual
+   ws=wb.addWorksheet('Por ítem mensual');
+   setup(ws,'CUMPLIMIENTO MENSUAL POR ÍTEM Y SERVICIO','Cada fila corresponde a un ítem dentro de un mes. Sin C o NC se presenta como Sin datos.',12);
+   ws.columns=[{width:14},{width:25},{width:26},{width:7},{width:72},...services.map(()=>({width:22})),{width:18}];
+   ws.addRow([]);
+   header(ws.addRow(['Mes','Categoría','Subcategoría','N°','Ítem evaluado',...services,'% Global']));
+   const monthsItems=[...new Set(valid.map(x=>x.month))].filter(Boolean).sort();
+   monthsItems.forEach(m=>{
+     flat.forEach((f,i)=>{
+       const vals=services.map(s=>{
+         let rows=valid.filter(x=>x.month===m&&x.itemNo===i+1&&x.service===s);
+         let C=0,NC=0;
+         rows.forEach(x=>{if(x.result==='C')C++;if(x.result==='NC')NC++});
+         return pctValue(C,NC)
+       });
+       let allRows=valid.filter(x=>x.month===m&&x.itemNo===i+1),C=0,NC=0;
+       allRows.forEach(x=>{if(x.result==='C')C++;if(x.result==='NC')NC++});
+       let r=ws.addRow([m,f.area,f.category,i+1,f.item,...vals,pctValue(C,NC)]);
+       for(let c=6;c<=12;c++)pctCell(r.getCell(c),r.getCell(c).value)
+     })
+   });
+   body(ws,5,ws.rowCount);
+   ws.autoFilter={from:'A4',to:'L'+ws.rowCount};
+   ws.views=[{showGridLines:false,state:'frozen',xSplit:5,ySplit:4}];
+   // mensual subdivisión
+   ws=wb.addWorksheet('Mensual subdivisión');
+   setup(ws,'EVOLUCIÓN MENSUAL POR SUBDIVISIÓN','Consolidado por mes, servicio y subdivisión.',9);
+   ws.columns=[{width:14},{width:34},{width:26},{width:9},{width:9},{width:9},{width:9},{width:18},{width:18}];
+   ws.addRow([]);
+   header(ws.addRow(['Mes','Servicio','Subdivisión','C','NC','NO','NA','Evaluados C+NC','% Cumplimiento']));
+   byMonthSubdivision.forEach(x=>{
+     let r=ws.addRow([x.month,x.service,x.subdivision,x.C,x.NC,x.NO,x.NA,x.valid,x.pct]);
+     pctCell(r.getCell(9),x.pct)
+   });
+   body(ws,5,ws.rowCount);
+   ws.autoFilter={from:'A4',to:'I'+ws.rowCount};
+
+   const subMonthLabels=[...new Set(byMonthSubdivision.map(x=>x.month))].filter(Boolean).sort();
+   const subNames=['GENERAL','PERSONAL ASISTENCIAL','SERVICIOS GENERALES'];
+   const subSeriesMonthly=subNames.map((sub,i)=>({
+     name:sub,
+     color:[BLUE2,GREEN,'ED7D31'][i],
+     values:subMonthLabels.map(m=>{
+       let rows=byMonthSubdivision.filter(x=>x.month===m&&x.subdivision===sub);
+       let C=rows.reduce((n,x)=>n+x.C,0),NC=rows.reduce((n,x)=>n+x.NC,0);
+       return pctValue(C,NC)
+     })
+   }));
+   if(subMonthLabels.length){
+     let img=makeChart('column',subMonthLabels,subSeriesMonthly,'Cumplimiento mensual por subdivisión',{width:1050,height:500,bottom:92});
+     addImage(ws,img,{tl:{col:10,row:3},ext:{width:880,height:410}})
+   }body(sh,5,sh.rowCount);sh.autoFilter={from:'A4',to:'H'+sh.rowCount};[data.slice(0,23),data.slice(23)].forEach((part,ix)=>{let img=makeChart('barh',part.map(x=>x.item),[{name:'Cumplimiento',color:GREEN,values:part.map(x=>x.pct)}],`${sv} - Ítems ${ix?24:1} a ${ix?46:23}`,{width:1050,height:600,left:400,bottom:42});addImage(sh,img,{tl:{col:9,row:ix?38:3},ext:{width:900,height:500}})})});
   wb.worksheets.forEach(sh=>{sh.pageSetup=Object.assign({orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0},sh.pageSetup||{})});
   let buffer=await wb.xlsx.writeBuffer(),blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`Informe_Profesional_Rondas_Gestion_Ambiental_${new Date().toISOString().slice(0,10)}.xlsx`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast('Informe Excel profesional generado con datos centralizados y gráficas visibles.')
  }catch(e){console.error(e);showWarning('No se pudo generar el Excel: '+e.message,true);toast('Error al generar Excel: '+e.message)}finally{button.disabled=false;button.textContent=oldText}
